@@ -44,7 +44,7 @@ def _offline_foundry_results(query: str) -> JsonDict:
         citations.append("Foundry IQ Emergency Medicine Guidance")
         confidence = max(confidence, 0.91)
 
-    if _contains_any(query, ["fever", "body aches", "cough", "fatigue"]):
+    if _contains_any(query, ["fever", "body aches", "cough", "sore throat"]):
         results.append(
             {
                 "claim": (
@@ -70,7 +70,7 @@ def _offline_foundry_results(query: str) -> JsonDict:
             }
         )
         citations.append("Foundry IQ Primary Care Guidance")
-        confidence = max(confidence, 0.62)
+        confidence = max(confidence, 0.49)
 
     if not results:
         results.append(
