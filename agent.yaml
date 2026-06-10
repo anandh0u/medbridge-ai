@@ -1,0 +1,17 @@
+name: medbridge-ai
+description: Community health navigator agent with Foundry IQ, Work IQ, and Fabric IQ context.
+template:
+  kind: hosted
+  protocols:
+    - name: responses
+      version: 2024-06-01
+  environment_variables:
+    - AZURE_AI_PROJECT_ENDPOINT
+    - MODEL_DEPLOYMENT_NAME
+    - MEDBRIDGE_FOUNDRY_IQ_SEARCH_ENDPOINT
+    - MEDBRIDGE_FOUNDRY_IQ_SEARCH_INDEX_NAME
+    - MEDBRIDGE_FOUNDRY_IQ_SEARCH_CONNECTION_NAME
+    - WORK_IQ_CONNECTION_NAME
+    - WORK_IQ_HISTORY_FILE
+    - FABRIC_IQ_CONNECTION_NAME
+    - FABRIC_IQ_DATA_FILE

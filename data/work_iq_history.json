@@ -1,0 +1,29 @@
+{
+  "demo-patient-001": {
+    "appointments": [
+      {
+        "date": "2026-02-12",
+        "type": "Primary care",
+        "summary": "Routine checkup; blood pressure mildly elevated."
+      },
+      {
+        "date": "2026-04-03",
+        "type": "Community clinic",
+        "summary": "Reported seasonal allergies and intermittent fatigue."
+      }
+    ],
+    "health_events": [
+      {
+        "date": "2025-11-20",
+        "summary": "Missed cardiology follow-up after elevated blood pressure screening."
+      }
+    ],
+    "medications": ["No active medications recorded in demo Work IQ memory."]
+  },
+  "default": {
+    "appointments": [],
+    "health_events": [],
+    "medications": []
+  }
+}
+

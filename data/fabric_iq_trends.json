@@ -1,0 +1,31 @@
+{
+  "South India": {
+    "respiratory": {
+      "trend": "elevated",
+      "regional_risk_score": 0.66,
+      "risk_factors": [
+        "Respiratory symptom reports are above baseline in nearby community clinics.",
+        "Limited same-day appointment availability increases follow-up delay risk."
+      ],
+      "recommended_public_health_actions": [
+        "Consider masking in crowded indoor settings when respiratory symptoms are present.",
+        "Use local urgent-care or public clinic channels if breathing symptoms worsen."
+      ]
+    },
+    "general": {
+      "trend": "stable",
+      "regional_risk_score": 0.28,
+      "risk_factors": ["No unusual regional signal detected in the demo community dataset."],
+      "recommended_public_health_actions": ["Use primary care, telehealth, or community clinic access for persistent symptoms."]
+    }
+  },
+  "default": {
+    "general": {
+      "trend": "stable",
+      "regional_risk_score": 0.28,
+      "risk_factors": ["No unusual regional signal detected in the demo community dataset."],
+      "recommended_public_health_actions": ["Use primary care, telehealth, or community clinic access for persistent symptoms."]
+    }
+  }
+}
+
