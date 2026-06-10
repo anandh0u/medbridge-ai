@@ -199,6 +199,31 @@ AZURE_AI_PROJECT_ENDPOINT=https://<resource>.services.ai.azure.com/api/projects/
 MODEL_DEPLOYMENT_NAME=gpt-4.1-mini
 ```
 
+### Azure for Students Quota Fallback
+
+Azure for Students subscriptions can create a Foundry project but may have no
+available quota for Azure OpenAI model deployments. If `gpt-4.1-mini`,
+`gpt-4o-mini`, and other chat models show no supported region or insufficient
+quota, keep local demo mode enabled:
+
+```env
+MEDBRIDGE_USE_LIVE_FOUNDRY=false
+```
+
+In this mode the agent still demonstrates the full Reasoning Agents flow:
+
+- Foundry IQ connector shape with `AIProjectClient` and `DefaultAzureCredential`.
+- Graceful fallback when live Foundry model quota is unavailable.
+- Work IQ and Fabric IQ parallel execution with `asyncio.gather`.
+- Risk synthesis and doctor briefing output.
+
+For a live cloud deployment later, use a subscription with Azure OpenAI quota,
+deploy any available chat model, update `MODEL_DEPLOYMENT_NAME`, and set:
+
+```env
+MEDBRIDGE_USE_LIVE_FOUNDRY=true
+```
+
 Create the Agent Service definition with the prompt and function tools:
 
 ```powershell
