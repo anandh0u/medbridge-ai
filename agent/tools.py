@@ -97,8 +97,11 @@ async def foundry_iq_search(query: str) -> JsonDict:
     """Search the Foundry IQ knowledge base for medical context."""
     endpoint = os.getenv("AZURE_AI_PROJECT_ENDPOINT")
     model_deployment = os.getenv("MODEL_DEPLOYMENT_NAME", "gpt-4.1-mini")
+    use_live_foundry = os.getenv("MEDBRIDGE_USE_LIVE_FOUNDRY", "").lower() in {"1", "true", "yes"}
 
     try:
+        if not use_live_foundry:
+            raise RuntimeError("MEDBRIDGE_USE_LIVE_FOUNDRY is not enabled")
         if not endpoint:
             raise RuntimeError("AZURE_AI_PROJECT_ENDPOINT is not configured")
 
