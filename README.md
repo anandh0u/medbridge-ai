@@ -224,6 +224,14 @@ deploy any available chat model, update `MODEL_DEPLOYMENT_NAME`, and set:
 MEDBRIDGE_USE_LIVE_FOUNDRY=true
 ```
 
+If the subscription has a Foundry resource but the model deployment is blocked
+by quota, use the prepared request note in
+[`docs/quota-request.md`](docs/quota-request.md). After quota is approved, run:
+
+```powershell
+.\scripts\deploy-model-after-quota.ps1
+```
+
 Create the Agent Service definition with the prompt and function tools:
 
 ```powershell
