@@ -3,7 +3,7 @@
 MedBridge AI is a community health navigator agent for the Microsoft Agents
 League Hackathon. It helps underserved communities describe symptoms, retrieve
 cited medical context, recall relevant personal history, incorporate community
-risk signals, and generate a Microsoft 365-compatible doctor briefing.
+risk signals, and generate a doctor briefing for a licensed clinician.
 
 MedBridge AI does not diagnose. It uses cautious language, cites medical
 claims, flags emergency symptoms, and recommends licensed professional care.
@@ -49,33 +49,32 @@ The Python agent implements an explicit seven-step reasoning flow:
 2. Query Foundry IQ for cited medical knowledge.
 3. Query Work IQ for patient history.
 4. Query Fabric IQ for regional risk.
-5. Synthesize low, medium, or high risk.
+5. Synthesize `LOW`, `MEDIUM`, `HIGH`, or `CRITICAL` risk.
 6. Generate a structured doctor briefing.
 7. Return dashboard-ready JSON.
 
 Enterprise Agents - Microsoft 365 Copilot:
-`m365/briefing_generator.py` turns the structured briefing into Markdown and
-Word-friendly HTML with sections for patient summary, symptoms, history,
-community context, recommended tests, next steps, and citations.
+`m365/briefing_generator.py` formats structured briefing dictionaries into
+Markdown and Word-friendly HTML with sections for patient summary, symptoms,
+history, community context, recommended tests, next steps, and citations.
 
 ## Microsoft IQ Layers
 
 Foundry IQ:
-`agent/tools.py::foundry_iq_search` uses `DefaultAzureCredential` and can query
-an Azure AI Search index when `MEDBRIDGE_FOUNDRY_IQ_SEARCH_ENDPOINT` and
-`MEDBRIDGE_FOUNDRY_IQ_SEARCH_INDEX_NAME` are set. Without cloud configuration,
-it returns deterministic demo citations from CDC and MedlinePlus.
+`agent/tools.py::foundry_iq_search` uses `AIProjectClient` with
+`DefaultAzureCredential` and the configured Foundry project endpoint. Without
+cloud configuration, it returns deterministic demo citations that keep local
+judging and demos runnable.
 
 Work IQ:
-`agent/tools.py::work_iq_recall` uses a project connection name if configured
-and reads patient history from `WORK_IQ_HISTORY_FILE` for local demos. In
-production, map this adapter to approved Microsoft Graph or Work IQ memory.
+`agent/tools.py::work_iq_recall` simulates Microsoft 365 Work IQ recall with
+last visit, diagnoses, medications, allergies, and appointments. The code marks
+where a real Microsoft Graph or Work IQ memory call would plug in.
 
 Fabric IQ:
-`agent/tools.py::fabric_iq_trends` uses a project connection name if configured
-and reads regional trend data from `FABRIC_IQ_DATA_FILE` for local demos. In
-production, map this adapter to a Fabric semantic model, OneLake shortcut, or
-API-backed community health dataset.
+`agent/tools.py::fabric_iq_trends` simulates Fabric IQ community health trends,
+active outbreaks, risk elevation, and nearest clinic distance. The code marks
+where a real Fabric ontology or semantic model query would plug in.
 
 ## Project Structure
 
@@ -123,7 +122,13 @@ python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Run the Python triage API:
+Run the Python reasoning agent:
+
+```powershell
+python -m agent.agent
+```
+
+Run the optional local API:
 
 ```powershell
 uvicorn agent.server:app --host 127.0.0.1 --port 8088
@@ -149,19 +154,23 @@ I have chest pain and shortness of breath.
 
 ```powershell
 cd E:\loopyy\medbridge-ai
-python -m agent.agent --symptoms "mild headache and fatigue" --user-id demo-patient-001 --region "South India"
+python -m agent.agent
 ```
 
 ## Microsoft 365 Briefing Output
 
 ```python
+import asyncio
+
 from agent.agent import run_triage
 from m365.briefing_generator import write_briefing_files
 
-result = run_triage(
-    symptoms="mild headache and fatigue",
-    user_id="demo-patient-001",
-    region="South India",
+result = asyncio.run(
+    run_triage(
+        symptoms="mild headache and fatigue",
+        user_id="demo-patient-001",
+        region="South India",
+    )
 )
 
 write_briefing_files(result["doctor_briefing"], "./out")
@@ -194,8 +203,9 @@ Create the Agent Service definition with the prompt and function tools:
 
 ```powershell
 python - <<'PY'
-from agent.agent import create_foundry_agent
-print(create_foundry_agent("medbridge-ai"))
+from agent.agent import create_foundry_hosted_agent
+
+print(create_foundry_hosted_agent("medbridge-ai"))
 PY
 ```
 
@@ -214,6 +224,16 @@ The system prompt in `agent/prompts.py` enforces:
 - Emergency banner for red-flag symptoms.
 - Licensed professional care recommendation.
 - Seven explicit reasoning steps.
+
+## Hackathon Submission Checklist
+
+- Public GitHub repository.
+- README with architecture, setup, IQ usage, and demo flow.
+- No confidential information or credentials committed.
+- At least one Microsoft IQ layer integrated. This project demonstrates all
+  three: Foundry IQ, Work IQ, and Fabric IQ.
+- Demo video link added before final submission.
+- Submission page updated before the June 14, 2026 deadline.
 
 ## Demo Video Placeholder
 
@@ -241,4 +261,3 @@ Suggested flow:
   https://medlineplus.gov/ency/article/003079.htm
 - CDC flu signs and symptoms:
   https://www.cdc.gov/flu/signs-symptoms/index.html
-
