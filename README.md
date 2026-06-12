@@ -268,17 +268,6 @@ The system prompt in `agent/prompts.py` enforces:
 - Demo video link added before final submission.
 - Submission page updated before the June 14, 2026 deadline.
 
-## Demo Video Placeholder
-
-```text
-Demo video: <paste final hackathon video URL here>
-Suggested flow:
-1. Show low-risk headache + fatigue.
-2. Show Work IQ timeline and Fabric IQ panel.
-3. Show generated doctor briefing.
-4. Show high-risk chest pain + shortness of breath emergency banner.
-5. Briefly show Foundry project, model deployment, and agent definition.
-```
 
 ## References
 
