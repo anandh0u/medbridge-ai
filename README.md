@@ -1,285 +1,85 @@
 # MedBridge AI
 
-MedBridge AI is a community health navigator agent for the Microsoft Agents
-League Hackathon. It helps underserved communities describe symptoms, retrieve
-cited medical context, recall relevant personal history, incorporate community
-risk signals, and generate a doctor briefing for a licensed clinician.
+MedBridge AI is a community health navigator that helps people make sense of symptoms, patient history, and local health signals in one place. Instead of leaving a user to guess, it turns fragmented information into a clear risk assessment, a doctor-ready briefing, and a simple next step.
 
-MedBridge AI does not diagnose. It uses cautious language, cites medical
-claims, flags emergency symptoms, and recommends licensed professional care.
+It was built for the Microsoft Agents League Hackathon to show how reasoning agents can do more than answer a prompt. They can coordinate multiple sources of context, stay cautious, and produce something genuinely useful for real people.
 
-## Architecture
+## Why It Matters
 
-```text
-User symptoms
-    |
-    v
-React + Vite dashboard
-    |
-    v
-FastAPI triage gateway (/triage, /responses)
-    |
-    v
-MedBridge reasoning orchestrator
-    |
-    +--> Foundry IQ connector -> cited medical knowledge
-    |
-    +--> Work IQ connector    -> appointments, history, care events
-    |
-    +--> Fabric IQ connector  -> regional trends and risk factors
-    |
-    v
-Risk synthesis + doctor briefing
-    |
-    +--> Dashboard panels
-    |
-    +--> Microsoft 365-compatible Markdown/HTML report
-```
+Health questions are usually messy. A person may have symptoms, an old diagnosis, medications, allergies, and a local outbreak happening nearby, but none of that is visible in a single conversation. MedBridge AI brings those signals together so the response is more grounded, more useful, and easier to act on.
 
-## Hackathon Tracks
+That makes it valuable for:
 
-Creative Apps - GitHub Copilot:
-The React dashboard includes symptom entry, risk status, appointment timeline,
-community trend context, citations, loading states, and error handling.
+- People who want fast triage guidance without a wall of medical jargon.
+- Clinicians who need a compact summary before a visit.
+- Hackathon reviewers who want to see a practical agent with real reasoning, not just a chatbot wrapper.
+- Teams evaluating how Microsoft Foundry can support multi-layer agent workflows.
 
-Reasoning Agents - Microsoft Foundry:
-The Python agent implements an explicit seven-step reasoning flow:
+## What MedBridge AI Does
 
-1. Receive symptoms.
-2. Query Foundry IQ for cited medical knowledge.
-3. Query Work IQ for patient history.
-4. Query Fabric IQ for regional risk.
-5. Synthesize `LOW`, `MEDIUM`, `HIGH`, or `CRITICAL` risk.
-6. Generate a structured doctor briefing.
-7. Return dashboard-ready JSON.
+MedBridge AI combines three reasoning layers:
 
-Enterprise Agents - Microsoft 365 Copilot:
-`m365/briefing_generator.py` formats structured briefing dictionaries into
-Markdown and Word-friendly HTML with sections for patient summary, symptoms,
-history, community context, recommended tests, next steps, and citations.
+- Foundry IQ: grounds symptom interpretation with cautious, cited medical guidance.
+- Work IQ: recalls patient history such as prior visits, diagnoses, medications, allergies, and upcoming appointments.
+- Fabric IQ: adds community health context such as outbreak signals and clinic proximity.
 
-## Microsoft IQ Layers
+From those layers, the app produces:
 
-Foundry IQ:
-`agent/tools.py::foundry_iq_search` uses `AIProjectClient` with
-`DefaultAzureCredential` and the configured Foundry project endpoint. Without
-cloud configuration, it returns deterministic demo citations that keep local
-judging and demos runnable.
+- A risk level: `LOW`, `MEDIUM`, `HIGH`, or `CRITICAL`.
+- An emergency flag when danger signs appear.
+- A short reasoning trace that shows how the result was formed.
+- A doctor briefing that is easy to hand off.
+- Citations so reviewers can verify where the medical language came from.
 
-Work IQ:
-`agent/tools.py::work_iq_recall` simulates Microsoft 365 Work IQ recall with
-last visit, diagnoses, medications, allergies, and appointments. The code marks
-where a real Microsoft Graph or Work IQ memory call would plug in.
+## What Makes It Useful
 
-Fabric IQ:
-`agent/tools.py::fabric_iq_trends` simulates Fabric IQ community health trends,
-active outbreaks, risk elevation, and nearest clinic distance. The code marks
-where a real Fabric ontology or semantic model query would plug in.
+MedBridge AI is designed to be useful in the real world, not just impressive in a demo:
 
-## Project Structure
+- It reduces confusion by turning symptom noise into a structured assessment.
+- It helps users know when something may need urgent care.
+- It gives doctors a cleaner starting point and avoids repeated intake questions.
+- It shows how regional health trends can influence the interpretation of symptoms.
+- It keeps the language cautious and always frames medical output as guidance, not diagnosis.
 
-```text
-medbridge-ai/
-  agent/
-    agent.py
-    prompts.py
-    reasoning.py
-    server.py
-    tools.py
-  data/
-    fabric_iq_trends.json
-    work_iq_history.json
-  frontend/
-    src/
-      App.tsx
-      Briefing.tsx
-      RiskPanel.tsx
-      SymptomInput.tsx
-      Timeline.tsx
-      api.ts
-      styles.css
-      types.ts
-  infra/
-    main.bicep
-  m365/
-    briefing_generator.py
-  agent.yaml
-  Dockerfile
-  requirements.txt
-  .env.example
-```
+## Demo Highlights
 
-## Local Setup
+The public demo is built to be visually clear and easy to judge:
 
-From the project root:
+- Scenario buttons for `Low`, `Outbreak`, and `Emergency`.
+- A large risk card with a visible emergency flag when needed.
+- A parallel IQ panel that shows the three information layers side by side.
+- A Work IQ timeline with patient context.
+- A Fabric IQ panel with regional signal and clinic context.
+- A doctor briefing panel that reads like a handoff note.
+- A reasoning trace that makes the agent’s thought process easy to inspect.
 
-```powershell
-cd E:\loopyy\medbridge-ai
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-Copy-Item .env.example .env
-```
+## For Reviewers
 
-Run the Python reasoning agent:
+If you are analyzing the project, these are the main things to look at:
 
-```powershell
-python -m agent.agent
-```
+- The agent is built around parallel reasoning, not one long prompt.
+- The output is structured for usefulness, not just conversation.
+- The safety posture is explicit: MedBridge AI does not diagnose and always recommends a licensed medical professional.
+- The frontend is intentionally polished so the story is easy to understand in under a minute.
+- The backend is Foundry-ready, while the public demo stays quota-safe so the project remains accessible.
 
-Run the optional local API:
+## Live Demo
 
-```powershell
-uvicorn agent.server:app --host 127.0.0.1 --port 8088
-```
+Public app: https://frontend-anandh0us-projects.vercel.app
 
-In another terminal, run the frontend:
+GitHub repository: https://github.com/anandh0u/medbridge-ai
 
-```powershell
-cd E:\loopyy\medbridge-ai\frontend
-npm install
-Copy-Item .env.example .env
-npm run dev
-```
+## Tech Stack
 
-Open the Vite URL and run the default symptom example. To test the emergency
-path, enter:
+- Python 3.13
+- FastAPI
+- Microsoft Foundry Agent Service
+- `azure-ai-projects`
+- `azure-identity`
+- React
+- Vite
+- TypeScript
 
-```text
-I have chest pain and shortness of breath.
-```
+## Safety
 
-## Local Python CLI
-
-```powershell
-cd E:\loopyy\medbridge-ai
-python -m agent.agent
-```
-
-## Microsoft 365 Briefing Output
-
-```python
-import asyncio
-
-from agent.agent import run_triage
-from m365.briefing_generator import write_briefing_files
-
-result = asyncio.run(
-    run_triage(
-        symptoms="mild headache and fatigue",
-        user_id="demo-patient-001",
-        region="South India",
-    )
-)
-
-write_briefing_files(result["doctor_briefing"], "./out")
-```
-
-The generated HTML opens cleanly in Microsoft Word and can be saved as `.docx`
-for Microsoft 365 workflows.
-
-## Azure Foundry Setup
-
-Deploy the starter Foundry resource, project, and `gpt-4.1-mini` deployment:
-
-```powershell
-az login
-az group create --name medbridge-rg --location eastus2
-az deployment group create `
-  --resource-group medbridge-rg `
-  --template-file infra/main.bicep `
-  --parameters aiFoundryName=<unique-foundry-name> aiProjectName=medbridge-ai
-```
-
-Set `.env` after deployment:
-
-```powershell
-AZURE_AI_PROJECT_ENDPOINT=https://<resource>.services.ai.azure.com/api/projects/<project>
-MODEL_DEPLOYMENT_NAME=gpt-4.1-mini
-```
-
-### Azure for Students Quota Fallback
-
-Azure for Students subscriptions can create a Foundry project but may have no
-available quota for Azure OpenAI model deployments. If `gpt-4.1-mini`,
-`gpt-4o-mini`, and other chat models show no supported region or insufficient
-quota, keep local demo mode enabled:
-
-```env
-MEDBRIDGE_USE_LIVE_FOUNDRY=false
-```
-
-In this mode the agent still demonstrates the full Reasoning Agents flow:
-
-- Foundry IQ connector shape with `AIProjectClient` and `DefaultAzureCredential`.
-- Graceful fallback when live Foundry model quota is unavailable.
-- Work IQ and Fabric IQ parallel execution with `asyncio.gather`.
-- Risk synthesis and doctor briefing output.
-
-For a live cloud deployment later, use a subscription with Azure OpenAI quota,
-deploy any available chat model, update `MODEL_DEPLOYMENT_NAME`, and set:
-
-```env
-MEDBRIDGE_USE_LIVE_FOUNDRY=true
-```
-
-If the subscription has a Foundry resource but the model deployment is blocked
-by quota, use the prepared request note in
-[`docs/quota-request.md`](docs/quota-request.md). After quota is approved, run:
-
-```powershell
-.\scripts\deploy-model-after-quota.ps1
-```
-
-Create the Agent Service definition with the prompt and function tools:
-
-```powershell
-python - <<'PY'
-from agent.agent import create_foundry_hosted_agent
-
-print(create_foundry_hosted_agent("medbridge-ai"))
-PY
-```
-
-The local container metadata is in `agent.yaml`. For a production hosted-agent
-deployment, publish the Docker image to ACR and deploy it through Foundry/AZD
-using the generated `Dockerfile`, `agent.yaml`, and environment variables. Do
-not set `FOUNDRY_*` variables manually; Foundry injects those at runtime.
-
-## Safety Policy
-
-The system prompt in `agent/prompts.py` enforces:
-
-- No diagnosis.
-- "This may indicate" language for triage.
-- Citations for medical claims.
-- Emergency banner for red-flag symptoms.
-- Licensed professional care recommendation.
-- Seven explicit reasoning steps.
-
-## Hackathon Submission Checklist
-
-- Public GitHub repository.
-- README with architecture, setup, IQ usage, and demo flow.
-- No confidential information or credentials committed.
-- At least one Microsoft IQ layer integrated. This project demonstrates all
-  three: Foundry IQ, Work IQ, and Fabric IQ.
-- Demo video link added before final submission.
-- Submission page updated before the June 14, 2026 deadline.
-
-
-## References
-
-- Microsoft Foundry Bicep quickstart:
-  https://learn.microsoft.com/en-us/azure/foundry/how-to/create-resource-template
-- Azure AI Foundry samples:
-  https://github.com/azure-ai-foundry/foundry-samples
-- MedlinePlus headache danger signs:
-  https://medlineplus.gov/ency/patientinstructions/000424.htm
-- MedlinePlus breathing difficulty first aid:
-  https://medlineplus.gov/ency/article/000007.htm
-- MedlinePlus chest pain:
-  https://medlineplus.gov/ency/article/003079.htm
-- CDC flu signs and symptoms:
-  https://www.cdc.gov/flu/signs-symptoms/index.html
+MedBridge AI is a community health navigator, not a diagnostic system. It uses cautious language such as “this may indicate” and always recommends consulting a licensed medical professional.
