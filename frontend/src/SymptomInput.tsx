@@ -1,11 +1,19 @@
-import { Send, UserRound } from "lucide-react";
+import { FlaskConical, Send, UserRound } from "lucide-react";
 import type { FormEvent, ReactElement } from "react";
+
+interface Scenario {
+  id: string;
+  label: string;
+}
 
 interface SymptomInputProps {
   symptoms: string;
   userId: string;
   region: string;
   isLoading: boolean;
+  activeScenario: string;
+  scenarios: readonly Scenario[];
+  onScenarioSelect: (scenarioId: string) => void;
   onSymptomsChange: (value: string) => void;
   onUserIdChange: (value: string) => void;
   onRegionChange: (value: string) => void;
@@ -17,6 +25,9 @@ export function SymptomInput({
   userId,
   region,
   isLoading,
+  activeScenario,
+  scenarios,
+  onScenarioSelect,
   onSymptomsChange,
   onUserIdChange,
   onRegionChange,
@@ -40,11 +51,28 @@ export function SymptomInput({
         </div>
       </div>
 
+      <div className="scenario-control" aria-label="Demo scenarios">
+        <FlaskConical size={18} />
+        {scenarios.map((scenario) => (
+          <button
+            aria-pressed={activeScenario === scenario.id}
+            className={activeScenario === scenario.id ? "scenario-button active" : "scenario-button"}
+            key={scenario.id}
+            onClick={() => onScenarioSelect(scenario.id)}
+            type="button"
+          >
+            {scenario.label}
+          </button>
+        ))}
+      </div>
+
       <label className="field">
         <span>Symptoms</span>
         <textarea
           value={symptoms}
-          onChange={(event) => onSymptomsChange(event.target.value)}
+          onChange={(event) => {
+            onSymptomsChange(event.target.value);
+          }}
           placeholder="Example: mild headache and fatigue since this morning"
           rows={7}
           required

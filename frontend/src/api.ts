@@ -20,6 +20,11 @@ const sources: Record<string, Citation> = {
     title: "CDC - Signs and Symptoms of Flu",
     url: "https://www.cdc.gov/flu/signs-symptoms/index.html",
     citation: "CDC flu symptoms and emergency-warning guidance"
+  },
+  who: {
+    title: "WHO ICD-11",
+    url: "https://icd.who.int/",
+    citation: "WHO ICD-11 symptom classification"
   }
 };
 
@@ -28,7 +33,10 @@ const highRiskTerms = [
   "shortness of breath",
   "can't breathe",
   "cannot breathe",
+  "difficulty breathing",
+  "unconscious",
   "stroke",
+  "severe bleeding",
   "fainting",
   "seizure",
   "worst headache"
@@ -67,12 +75,15 @@ function sourceList(symptoms: string): Citation[] {
 function createMockResult(request: TriageRequest): TriageResult {
   const riskLevel = inferRisk(request.symptoms);
   const citations = sourceList(request.symptoms);
+  const isEmergency = riskLevel === "high";
+  const isOutbreak = /fever|body aches|cough|flu|sore throat/i.test(request.symptoms);
   const isRespiratory = /breath|cough|fever|chest|flu|sore throat/i.test(request.symptoms);
-  const score = riskLevel === "high" ? 0.92 : riskLevel === "medium" ? 0.68 : 0.34;
-  const communityScore = isRespiratory ? 0.66 : 0.31;
+  const displayRisk: RiskLevel = isOutbreak && !isEmergency ? "medium" : riskLevel;
+  const score = isEmergency ? 0.96 : isOutbreak ? 0.76 : 0.34;
+  const communityScore = isEmergency ? 0.88 : isOutbreak ? 0.72 : 0.24;
   const emergency =
-    riskLevel === "high"
-      ? "High-risk symptoms reported. This may indicate a time-sensitive emergency. Call local emergency services now or go to the nearest emergency department."
+    isEmergency
+      ? "EMERGENCY FLAG: Call local emergency services now or go to the nearest emergency department. This may indicate a time-sensitive condition [Source: MedlinePlus breathing difficulty first-aid guidance]."
       : null;
   const timeline = [
     {
@@ -92,13 +103,13 @@ function createMockResult(request: TriageRequest): TriageResult {
     }
   ];
   const actionPlan =
-    riskLevel === "high"
+    isEmergency
       ? [
           "Call local emergency services now or go to the nearest emergency department.",
           "Do not drive yourself while symptoms are active.",
           "Share the Work IQ history and symptom timeline with emergency responders."
         ]
-      : riskLevel === "medium"
+      : isOutbreak
         ? [
             "Contact a licensed clinician, urgent care, or community clinic today.",
             "Monitor symptom severity, breathing, fever, hydration, and new red flags.",
@@ -112,9 +123,14 @@ function createMockResult(request: TriageRequest): TriageResult {
 
   const communityContext = {
     condition: isRespiratory ? "respiratory" : "general",
-    trend: isRespiratory ? "elevated" : "stable",
+    trend: isEmergency ? "urgent" : isOutbreak ? "elevated" : "stable",
     regional_risk_score: communityScore,
-    risk_factors: isRespiratory
+    risk_factors: isEmergency
+      ? [
+          "Emergency respiratory presentations are above baseline in the demo community signal.",
+          "Nearest urgent-care route should be prioritized over routine appointment scheduling."
+        ]
+      : isOutbreak
       ? [
           "Respiratory symptom reports are above baseline in nearby community clinics.",
           "Limited same-day appointment availability increases follow-up delay risk."
@@ -124,26 +140,60 @@ function createMockResult(request: TriageRequest): TriageResult {
 
   return {
     emergency_banner: emergency,
-    risk_level: riskLevel,
+    risk_level: displayRisk,
     risk_score: score,
     risk_rationale:
-      "This may indicate " +
-      riskLevel +
-      " risk based on symptoms, Work IQ history, Fabric IQ context, and cited Foundry IQ medical guidance.",
+      isEmergency
+        ? "Emergency keyword detected in the symptoms and cross-checked against cited emergency guidance."
+        : isOutbreak
+          ? "Foundry IQ symptom confidence and Fabric IQ community signals both point to elevated respiratory risk."
+          : "No emergency keyword, outbreak escalation, or matching high-risk history was found.",
     action_plan: actionPlan,
+    reasoning_trace: [
+      "1. Parse symptoms and identify red-flag keywords.",
+      "2. Query Foundry IQ medical guidance for cautious symptom context.",
+      "3. Recall Work IQ patient history, medications, allergies, and appointments.",
+      "4. Query Fabric IQ regional outbreak and clinic-access signals.",
+      "5. Compare Foundry confidence with active community health trends.",
+      "6. Assign risk level and preserve the full reasoning trace.",
+      "7. Produce a doctor briefing with citations and next steps."
+    ],
+    iq_summary: [
+      {
+        label: "Foundry IQ",
+        value: isEmergency ? "0.96" : isOutbreak ? "0.78" : "0.49",
+        detail: isEmergency
+          ? "Emergency medicine guidance matched red-flag symptoms."
+          : isOutbreak
+            ? "Respiratory guidance matched fever/body-ache pattern."
+            : "Primary care guidance matched mild symptom pattern."
+      },
+      {
+        label: "Work IQ",
+        value: `${timeline.length} events`,
+        detail: "Patient context recalled from simulated M365 health memory."
+      },
+      {
+        label: "Fabric IQ",
+        value: `${Math.round(communityScore * 100)}%`,
+        detail: isRespiratory
+          ? "Community respiratory signal included in synthesis."
+          : "No elevated regional signal in demo community dataset."
+      }
+    ],
     timeline,
     community_context: communityContext,
     doctor_briefing: {
       patient_summary: {
         patient_id: request.userId,
         region: request.region,
-        risk_level: riskLevel,
+        risk_level: displayRisk,
         risk_score: score
       },
       reported_symptoms: request.symptoms,
       medical_context: citations.map((source) => ({
         claim:
-          riskLevel === "high"
+          isEmergency
             ? "These symptoms may indicate a time-sensitive condition and require urgent assessment."
             : "These symptoms may be non-emergency when no danger signs are present, but should be monitored.",
         confidence: score,
@@ -152,7 +202,7 @@ function createMockResult(request: TriageRequest): TriageResult {
       health_history: timeline,
       community_context: communityContext,
       recommended_tests:
-        riskLevel === "high"
+        isEmergency
           ? ["Emergency clinician assessment", "Vital signs and oxygen saturation", "ECG if clinically appropriate"]
           : ["Primary care assessment if symptoms persist", "Medication and vital-sign review"],
       recommended_next_steps: actionPlan,
@@ -226,6 +276,8 @@ function normalizeBackendResult(payload: unknown, request: TriageRequest): Triag
   const recommendation = asString(root.recommendation, "Consult a licensed medical professional.");
   const reasoningTrace = asStringArray(root.reasoning_trace);
   const foundryCitationNames = asStringArray(medical.citations);
+  const activeOutbreaks = asStringArray(trends.active_outbreaks);
+  const riskElevation = asString(trends.risk_elevation, activeOutbreaks.length ? "elevated" : "stable");
   const citations = foundryCitationNames.length
     ? foundryCitationNames.map(citationFromName)
     : sourceList(symptoms);
@@ -233,8 +285,6 @@ function normalizeBackendResult(payload: unknown, request: TriageRequest): Triag
   const medicalResults = Array.isArray(medical.results) ? medical.results.map(asRecord) : [];
   const pastDiagnoses = asStringArray(history.past_diagnoses);
   const appointments = asStringArray(history.appointments);
-  const activeOutbreaks = asStringArray(trends.active_outbreaks);
-  const riskElevation = asString(trends.risk_elevation, activeOutbreaks.length ? "elevated" : "stable");
   const clinic = asString(trends.nearest_clinic, "Nearest public community clinic");
   const clinicDistance = typeof trends.clinic_distance_km === "number" ? trends.clinic_distance_km : null;
 
@@ -290,6 +340,32 @@ function normalizeBackendResult(payload: unknown, request: TriageRequest): Triag
       reasoningTrace[0] ??
       asString(root.primary_concern, "This may indicate a risk level based on Foundry IQ, Work IQ, and Fabric IQ."),
     action_plan: nextSteps,
+    reasoning_trace: reasoningTrace.length
+      ? reasoningTrace
+      : [
+          "1. Symptoms parsed.",
+          "2. Foundry IQ medical context retrieved.",
+          "3. Work IQ history recalled.",
+          "4. Fabric IQ regional signal checked.",
+          "5. Risk synthesis completed."
+        ],
+    iq_summary: [
+      {
+        label: "Foundry IQ",
+        value: confidence.toFixed(2),
+        detail: `${medicalResults.length || 1} cited medical finding returned.`
+      },
+      {
+        label: "Work IQ",
+        value: `${timeline.length} events`,
+        detail: "Patient history converted into timeline context."
+      },
+      {
+        label: "Fabric IQ",
+        value: `${Math.round(communityContext.regional_risk_score * 100)}%`,
+        detail: `${riskElevation} regional signal.`
+      }
+    ],
     timeline,
     community_context: communityContext,
     doctor_briefing: {

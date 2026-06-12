@@ -46,6 +46,12 @@ export interface TriageResult {
   risk_score: number;
   risk_rationale: string;
   action_plan: string[];
+  reasoning_trace: string[];
+  iq_summary: Array<{
+    label: string;
+    value: string;
+    detail: string;
+  }>;
   timeline: TimelineEvent[];
   community_context: CommunityContext;
   doctor_briefing: DoctorBriefing;
@@ -58,4 +64,3 @@ export interface TriageRequest {
   userId: string;
   region: string;
 }
-

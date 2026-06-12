@@ -16,6 +16,7 @@
   --amber: #b45309;
   --red: #b91c1c;
   --green: #15803d;
+  --violet: #6d28d9;
   --shadow: 0 16px 42px rgba(15, 23, 42, 0.08);
 }
 
@@ -27,6 +28,9 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background:
+    linear-gradient(180deg, #eef7f6 0, rgba(238, 247, 246, 0) 310px),
+    #f6f8fb;
 }
 
 button,
@@ -46,7 +50,7 @@ a {
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(320px, 0.95fr) minmax(280px, 0.7fr) minmax(380px, 1.25fr);
+  grid-template-columns: minmax(330px, 0.95fr) minmax(300px, 0.72fr) minmax(420px, 1.28fr);
   gap: 18px;
   max-width: 1480px;
   margin: 0 auto;
@@ -72,6 +76,8 @@ a {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  position: sticky;
+  top: 24px;
 }
 
 .panel-heading,
@@ -135,6 +141,40 @@ a {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+.scenario-control {
+  align-items: center;
+  background: #eef6f5;
+  border: 1px solid #c9dedb;
+  border-radius: 8px;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: auto repeat(3, minmax(0, 1fr));
+  padding: 6px;
+}
+
+.scenario-control svg {
+  color: var(--teal-strong);
+  margin-left: 4px;
+}
+
+.scenario-button {
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: #28514e;
+  cursor: pointer;
+  font-weight: 800;
+  min-height: 34px;
+  padding: 6px 8px;
+}
+
+.scenario-button:hover,
+.scenario-button.active {
+  background: #ffffff;
+  color: #082f2c;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
 }
 
 .field,
@@ -210,6 +250,48 @@ a:focus-visible {
 .risk-panel p {
   color: #263140;
   margin: 12px 0;
+}
+
+.signal-list {
+  display: grid;
+  gap: 10px;
+}
+
+.signal-row {
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto 1fr auto;
+  min-height: 66px;
+  padding: 10px;
+}
+
+.signal-row svg {
+  color: var(--violet);
+}
+
+.signal-row div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.signal-row strong {
+  color: #0f172a;
+}
+
+.signal-row span {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.signal-row b {
+  color: var(--teal-strong);
+  font-size: 0.9rem;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .risk-score-row {
@@ -358,6 +440,38 @@ a:focus-visible {
   gap: 10px;
 }
 
+.reasoning-list {
+  counter-reset: reasoning;
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.reasoning-list li {
+  align-items: start;
+  color: #1f2937;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 28px 1fr;
+}
+
+.reasoning-list li::before {
+  background: #e0f2fe;
+  border: 1px solid #bae6fd;
+  border-radius: 999px;
+  color: #075985;
+  content: counter(reasoning);
+  counter-increment: reasoning;
+  display: inline-grid;
+  font-size: 0.78rem;
+  font-weight: 900;
+  height: 24px;
+  place-items: center;
+  width: 24px;
+}
+
 .citation-list a {
   justify-content: space-between;
   gap: 10px;
@@ -416,6 +530,7 @@ a:focus-visible {
 
   .intake-panel {
     min-height: auto;
+    position: static;
   }
 }
 
@@ -426,9 +541,14 @@ a:focus-visible {
 
   .dashboard-grid,
   .field-grid,
+  .scenario-control,
   .metric-grid,
   .briefing-columns {
     grid-template-columns: 1fr;
+  }
+
+  .scenario-control svg {
+    display: none;
   }
 
   .panel-heading h1 {

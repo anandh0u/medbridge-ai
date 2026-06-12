@@ -18,6 +18,7 @@ coverage/
 out/
 *.md.tmp
 .foundry/
+.vercel/
 playwright-report/
 test-results/
 browser-check.png
