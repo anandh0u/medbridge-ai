@@ -1,4 +1,4 @@
-import type { Citation, RiskLevel, TriageRequest, TriageResult } from "./types";
+import type { Citation, RiskLevel, TimelineEvent, TriageRequest, TriageResult } from "./types";
 
 const sources: Record<string, Citation> = {
   chest: {
@@ -28,92 +28,223 @@ const sources: Record<string, Citation> = {
   }
 };
 
-const highRiskTerms = [
-  "chest pain",
-  "shortness of breath",
-  "can't breathe",
-  "cannot breathe",
-  "difficulty breathing",
-  "unconscious",
-  "stroke",
-  "severe bleeding",
-  "fainting",
-  "seizure",
-  "worst headache"
-];
-
-const mediumRiskTerms = ["fever", "persistent", "worsening", "vomiting", "dizziness", "asthma"];
-
-function containsAny(text: string, terms: string[]): boolean {
-  const normalized = text.toLowerCase();
-  return terms.some((term) => normalized.includes(term));
+interface MockHistory {
+  lastVisit: string;
+  pastDiagnoses: string[];
+  medications: string[];
+  allergies: string[];
+  appointments: string[];
 }
 
-function inferRisk(symptoms: string): RiskLevel {
-  if (containsAny(symptoms, highRiskTerms)) {
-    return "high";
+const mockHistories: Record<string, MockHistory> = {
+  user_001: {
+    lastVisit: "2026-04-18: Community clinic visit for seasonal fever and cough.",
+    pastDiagnoses: ["seasonal allergies", "mild asthma"],
+    medications: ["salbutamol inhaler as needed", "cetirizine 10 mg as needed"],
+    allergies: ["penicillin"],
+    appointments: ["2026-06-14: Primary care follow-up", "2026-07-02: Pulmonary function review"]
+  },
+  "demo-patient-001": {
+    lastVisit: "2026-02-12: Routine primary care checkup.",
+    pastDiagnoses: ["elevated blood pressure screening"],
+    medications: ["no active medications recorded"],
+    allergies: ["no allergies recorded"],
+    appointments: ["2026-06-22: Community clinic appointment"]
   }
-  if (containsAny(symptoms, mediumRiskTerms)) {
-    return "medium";
+};
+
+const defaultHistory: MockHistory = {
+  lastVisit: "No previous visit found in simulated Work IQ memory.",
+  pastDiagnoses: [],
+  medications: [],
+  allergies: [],
+  appointments: []
+};
+
+const negationTerms = ["no", "not", "without", "denies", "denied", "free of"];
+const emergencyTerms = ["chest pain", "difficulty breathing", "shortness of breath", "unconscious", "stroke", "severe bleeding"];
+const viralTerms = ["fever", "body aches", "cough", "sore throat"];
+const mildTerms = ["mild headache", "headache", "fatigue", "tired"];
+const respiratoryTerms = ["difficulty breathing", "shortness of breath", "chest pain", "wheezing", "chest tightness", "cough"];
+
+function normalizeText(text: string): string {
+  return text.toLowerCase();
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function phrasePresent(text: string, phrase: string): boolean {
+  return new RegExp(`\\b${escapeRegExp(phrase)}\\b`, "i").test(text);
+}
+
+function phraseIsNegated(text: string, phrase: string): boolean {
+  return new RegExp(
+    `\\b(?:${negationTerms.join("|")})\\b(?:\\W+\\w+){0,3}\\W+${escapeRegExp(phrase)}\\b`,
+    "i"
+  ).test(text);
+}
+
+function activePhrases(text: string, phrases: string[]): string[] {
+  return phrases.filter((phrase) => phrasePresent(text, phrase) && !phraseIsNegated(text, phrase));
+}
+
+function getMockHistory(userId: string): MockHistory {
+  return mockHistories[userId] ?? defaultHistory;
+}
+
+function diagnosisMatchesSymptoms(diagnosis: string, symptomText: string): boolean {
+  const loweredDiagnosis = diagnosis.toLowerCase();
+  const loweredSymptoms = symptomText.toLowerCase();
+
+  if (loweredDiagnosis.includes("asthma") && /breath|wheez|cough|chest tightness/i.test(loweredSymptoms)) {
+    return true;
   }
-  return "low";
+  if ((loweredDiagnosis.includes("blood pressure") || loweredDiagnosis.includes("hypertension")) && /headache|dizziness|chest pain/i.test(loweredSymptoms)) {
+    return true;
+  }
+  if (loweredDiagnosis.includes("allerg") && /sneezing|congestion|itch|rash/i.test(loweredSymptoms)) {
+    return true;
+  }
+  if (loweredDiagnosis.includes("fever") && loweredSymptoms.includes("fever")) {
+    return true;
+  }
+
+  const diagnosisTokens = new Set(
+    loweredDiagnosis.split(/[^a-z0-9]+/).filter((token) => token.length > 3 && token !== "seasonal" && token !== "routine")
+  );
+  const symptomTokens = new Set(loweredSymptoms.split(/[^a-z0-9]+/).filter(Boolean));
+  for (const token of diagnosisTokens) {
+    if (symptomTokens.has(token)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function historyMatchesSymptoms(history: MockHistory, symptoms: string): string[] {
+  return history.pastDiagnoses.filter((diagnosis) => diagnosisMatchesSymptoms(diagnosis, symptoms));
+}
+
+function buildTimeline(history: MockHistory): TimelineEvent[] {
+  const events: TimelineEvent[] = [];
+  if (history.lastVisit) {
+    const [date, ...rest] = history.lastVisit.split(":");
+    events.push({
+      date: date?.trim() || "Last visit",
+      type: "Last visit",
+      summary: rest.length ? rest.join(":").trim() : history.lastVisit
+    });
+  }
+  for (const diagnosis of history.pastDiagnoses) {
+    events.push({
+      date: "History",
+      type: "Past diagnosis",
+      summary: diagnosis
+    });
+  }
+  for (const appointment of history.appointments) {
+    const [date, ...rest] = appointment.split(":");
+    events.push({
+      date: date?.trim() || "Upcoming",
+      type: "Appointment",
+      summary: rest.length ? rest.join(":").trim() : appointment
+    });
+  }
+  return events;
 }
 
 function sourceList(symptoms: string): Citation[] {
-  const normalized = symptoms.toLowerCase();
+  const normalized = normalizeText(symptoms);
   const list = new Map<string, Citation>();
-  if (normalized.includes("chest")) list.set("chest", sources.chest);
-  if (normalized.includes("breath")) list.set("breathing", sources.breathing);
-  if (normalized.includes("headache")) list.set("headache", sources.headache);
-  if (["fever", "cough", "fatigue", "sore throat"].some((term) => normalized.includes(term))) {
+  if (activePhrases(normalized, ["chest pain"]).length > 0) list.set("chest", sources.chest);
+  if (activePhrases(normalized, ["difficulty breathing", "shortness of breath"]).length > 0) list.set("breathing", sources.breathing);
+  if (activePhrases(normalized, ["headache", "mild headache"]).length > 0) list.set("headache", sources.headache);
+  if (activePhrases(normalized, viralTerms).length > 0) {
     list.set("flu", sources.flu);
   }
-  if (list.size === 0) list.set("headache", sources.headache);
+  if (list.size === 0) list.set("who", sources.who);
   return [...list.values()];
 }
 
-function createMockResult(request: TriageRequest): TriageResult {
-  const riskLevel = inferRisk(request.symptoms);
-  const citations = sourceList(request.symptoms);
-  const isEmergency = riskLevel === "high";
-  const isOutbreak = /fever|body aches|cough|flu|sore throat/i.test(request.symptoms);
-  const isRespiratory = /breath|cough|fever|chest|flu|sore throat/i.test(request.symptoms);
-  const displayRisk: RiskLevel = isOutbreak && !isEmergency ? "medium" : riskLevel;
-  const score = isEmergency ? 0.96 : isOutbreak ? 0.76 : 0.34;
-  const communityScore = isEmergency ? 0.88 : isOutbreak ? 0.72 : 0.24;
-  const emergency =
+function analyzeMockRisk(symptoms: string, history: MockHistory, region: string) {
+  const normalized = normalizeText(symptoms);
+  const emergencySignals = activePhrases(normalized, emergencyTerms);
+  const viralSignals = activePhrases(normalized, viralTerms);
+  const mildSignals = activePhrases(normalized, mildTerms);
+  const respiratorySignals = activePhrases(normalized, respiratoryTerms);
+  const historyMatches = historyMatchesSymptoms(history, symptoms);
+  const isOutbreak = viralSignals.length >= 2;
+  const isEmergency = emergencySignals.length > 0;
+  const foundryConfidence = isEmergency ? 0.93 : isOutbreak ? 0.74 : historyMatches.length > 0 ? 0.61 : mildSignals.length > 0 ? 0.46 : 0.42;
+  const riskLevel: RiskLevel =
+    isEmergency
+      ? "high"
+      : foundryConfidence > 0.75 && isOutbreak
+        ? "high"
+        : foundryConfidence > 0.5 || historyMatches.length > 0 || viralSignals.length >= 2 || respiratorySignals.length > 0
+          ? "medium"
+          : "low";
+  const score = riskLevel === "high" ? 0.96 : riskLevel === "medium" ? Math.max(foundryConfidence, 0.58) : Math.max(foundryConfidence, 0.32);
+  const communityScore = riskLevel === "high" ? 0.88 : riskLevel === "medium" ? (isOutbreak ? 0.68 : 0.44) : 0.24;
+  const condition = isEmergency ? "respiratory emergency" : isOutbreak ? "viral respiratory cluster" : historyMatches.length > 0 ? "history-aware follow-up" : "general";
+  const trend = isEmergency ? "urgent" : isOutbreak ? "elevated" : historyMatches.length > 0 ? "watchful" : "stable";
+  const riskFactors = isEmergency
+    ? [
+        "Emergency respiratory presentations are above baseline in the demo community signal [Source: Fabric IQ].",
+        "Nearest urgent-care route should be prioritized over routine appointment scheduling [Source: Fabric IQ]."
+      ]
+    : isOutbreak
+      ? [
+          "Respiratory symptom reports are above baseline in nearby community clinics [Source: Fabric IQ].",
+          "Same-day clinic access is helpful when fever and body-ache clusters appear together [Source: Fabric IQ]."
+        ]
+      : historyMatches.length > 0
+        ? [
+            `Past diagnoses that overlap with the current symptoms: ${historyMatches.join(", ")} [Source: Work IQ].`,
+            "Follow-up care is useful when prior history and current symptoms point in the same direction [Source: Work IQ]."
+          ]
+        : ["No unusual regional signal detected in the demo community dataset [Source: Fabric IQ]."];
+
+  const emergencyBanner =
     isEmergency
       ? "EMERGENCY FLAG: Call local emergency services now or go to the nearest emergency department. This may indicate a time-sensitive condition [Source: MedlinePlus breathing difficulty first-aid guidance]."
       : null;
-  const timeline = [
-    {
-      date: "2026-02-12",
-      type: "Primary care",
-      summary: "Routine checkup; blood pressure mildly elevated."
-    },
-    {
-      date: "2026-04-03",
-      type: "Community clinic",
-      summary: "Reported seasonal allergies and intermittent fatigue."
-    },
-    {
-      date: "2025-11-20",
-      type: "Follow-up",
-      summary: "Missed cardiology follow-up after elevated blood pressure screening."
-    }
-  ];
+
+  const sourceName = emergencySignals.length
+    ? "MedlinePlus breathing difficulty first-aid guidance"
+    : isOutbreak
+      ? "CDC flu symptoms and emergency-warning guidance"
+      : viralSignals.length > 0 || respiratorySignals.length > 0
+        ? "CDC flu symptoms and emergency-warning guidance"
+        : historyMatches.length > 0
+          ? "WHO ICD-11 symptom classification"
+          : "WHO ICD-11 symptom classification";
+
+  const riskRationale =
+    riskLevel === "high"
+      ? isEmergency
+        ? "Emergency keyword detected after negation handling and cross-checked against cited emergency guidance [Source: MedlinePlus breathing difficulty first-aid guidance]."
+        : "Foundry IQ confidence and active community signals both point to an elevated risk window [Source: CDC flu symptoms and emergency-warning guidance]."
+      : riskLevel === "medium"
+        ? historyMatches.length > 0
+          ? "This may indicate a follow-up concern because the symptom pattern overlaps with prior history [Source: WHO ICD-11]."
+          : "This may indicate a viral or respiratory follow-up concern that benefits from clinical review [Source: CDC flu symptoms and emergency-warning guidance]."
+        : "No non-negated emergency keyword, outbreak escalation, or strong history match was found [Source: WHO ICD-11].";
+
   const actionPlan =
-    isEmergency
+    riskLevel === "high"
       ? [
           "Call local emergency services now or go to the nearest emergency department.",
           "Do not drive yourself while symptoms are active.",
           "Share the Work IQ history and symptom timeline with emergency responders."
         ]
-      : isOutbreak
+      : riskLevel === "medium"
         ? [
             "Contact a licensed clinician, urgent care, or community clinic today.",
             "Monitor symptom severity, breathing, fever, hydration, and new red flags.",
-            "Use the doctor briefing to reduce repeated intake burden at the visit."
+            "Bring the doctor briefing so intake can move faster."
           ]
         : [
             "Use rest, hydration, and symptom monitoring while symptoms remain mild.",
@@ -121,64 +252,98 @@ function createMockResult(request: TriageRequest): TriageResult {
             "Seek urgent help if red-flag symptoms appear."
           ];
 
-  const communityContext = {
-    condition: isRespiratory ? "respiratory" : "general",
-    trend: isEmergency ? "urgent" : isOutbreak ? "elevated" : "stable",
-    regional_risk_score: communityScore,
-    risk_factors: isEmergency
-      ? [
-          "Emergency respiratory presentations are above baseline in the demo community signal.",
-          "Nearest urgent-care route should be prioritized over routine appointment scheduling."
-        ]
-      : isOutbreak
-      ? [
-          "Respiratory symptom reports are above baseline in nearby community clinics.",
-          "Limited same-day appointment availability increases follow-up delay risk."
-        ]
-      : ["No unusual regional signal detected in the demo community dataset."]
-  };
+  const reasoningTrace = [
+    "1. Parse symptoms and identify red-flag keywords after negation handling.",
+    `2. Query Foundry IQ medical guidance for cautious symptom context [Source: ${sourceName}].`,
+    `3. Recall Work IQ patient history, medications, allergies, and appointments [Source: Work IQ].`,
+    `4. Query Fabric IQ regional outbreak and clinic-access signals [Source: Fabric IQ].`,
+    `5. Compare Foundry confidence, patient history, and regional health trends to assign risk [Source: WHO ICD-11].`,
+    "6. Produce a doctor briefing with citations and next steps [Source: WHO ICD-11].",
+    "7. Always recommend consulting a licensed medical professional [Source: WHO ICD-11]."
+  ];
 
   return {
-    emergency_banner: emergency,
-    risk_level: displayRisk,
-    risk_score: score,
-    risk_rationale:
-      isEmergency
-        ? "Emergency keyword detected in the symptoms and cross-checked against cited emergency guidance."
-        : isOutbreak
-          ? "Foundry IQ symptom confidence and Fabric IQ community signals both point to elevated respiratory risk."
-          : "No emergency keyword, outbreak escalation, or matching high-risk history was found.",
-    action_plan: actionPlan,
-    reasoning_trace: [
-      "1. Parse symptoms and identify red-flag keywords.",
-      "2. Query Foundry IQ medical guidance for cautious symptom context.",
-      "3. Recall Work IQ patient history, medications, allergies, and appointments.",
-      "4. Query Fabric IQ regional outbreak and clinic-access signals.",
-      "5. Compare Foundry confidence with active community health trends.",
-      "6. Assign risk level and preserve the full reasoning trace.",
-      "7. Produce a doctor briefing with citations and next steps."
-    ],
+    riskLevel,
+    score,
+    foundryConfidence,
+    communityScore,
+    emergencyBanner,
+    riskRationale,
+    actionPlan,
+    reasoningTrace,
+    condition,
+    trend,
+    riskFactors,
+    isOutbreak,
+    emergencySignals,
+    viralSignals,
+    mildSignals,
+    respiratorySignals,
+    historyMatches,
+    sourceName
+  };
+}
+
+function createMockResult(request: TriageRequest): TriageResult {
+  const history = getMockHistory(request.userId);
+  const timeline = buildTimeline(history);
+  const assessment = analyzeMockRisk(request.symptoms, history, request.region);
+  const citations = sourceList(request.symptoms);
+  const communityContext = {
+    condition: assessment.condition,
+    trend: assessment.trend,
+    regional_risk_score: assessment.communityScore,
+    risk_factors: assessment.riskFactors
+  };
+  const medicalContextClaim =
+    assessment.riskLevel === "high"
+      ? "These symptoms may indicate a time-sensitive condition and require urgent assessment [Source: MedlinePlus breathing difficulty first-aid guidance]."
+      : assessment.riskLevel === "medium"
+        ? assessment.isOutbreak
+          ? "These symptoms may indicate a viral respiratory illness that should be reviewed by a clinician today [Source: CDC flu symptoms and emergency-warning guidance]."
+          : assessment.historyMatches.length > 0
+            ? "These symptoms may indicate a follow-up concern that overlaps with prior history [Source: WHO ICD-11]."
+            : "These symptoms may indicate a follow-up concern that should be reviewed by a clinician [Source: WHO ICD-11]."
+        : "These symptoms may indicate a lower-acuity concern when no danger signs are present [Source: WHO ICD-11].";
+
+  return {
+    emergency_banner: assessment.emergencyBanner,
+    risk_level: assessment.riskLevel,
+    risk_score: assessment.score,
+    risk_rationale: assessment.riskRationale,
+    action_plan: assessment.actionPlan,
+    reasoning_trace: assessment.reasoningTrace,
     iq_summary: [
       {
         label: "Foundry IQ",
-        value: isEmergency ? "0.96" : isOutbreak ? "0.78" : "0.49",
-        detail: isEmergency
-          ? "Emergency medicine guidance matched red-flag symptoms."
-          : isOutbreak
-            ? "Respiratory guidance matched fever/body-ache pattern."
-            : "Primary care guidance matched mild symptom pattern."
+        value: assessment.foundryConfidence.toFixed(2),
+        detail:
+          assessment.riskLevel === "high"
+            ? "Emergency medicine guidance matched a red-flag symptom cluster [Source: MedlinePlus breathing difficulty first-aid guidance]."
+          : assessment.isOutbreak
+              ? "Respiratory guidance matched a viral cluster and the confidence stayed below the emergency threshold [Source: CDC flu symptoms and emergency-warning guidance]."
+              : assessment.historyMatches.length > 0
+                ? "Primary care guidance matched the current symptoms against prior history [Source: WHO ICD-11]."
+                : assessment.viralSignals.length > 0
+                  ? "Primary care guidance matched a viral follow-up pattern [Source: WHO ICD-11]."
+                  : "Primary care guidance matched a mild symptom pattern [Source: WHO ICD-11]."
       },
       {
         label: "Work IQ",
         value: `${timeline.length} events`,
-        detail: "Patient context recalled from simulated M365 health memory."
+        detail: history.pastDiagnoses.length
+          ? `Past diagnoses were reused to make the triage more patient-specific: ${history.pastDiagnoses.join(", ")} [Source: Work IQ].`
+          : "Patient context recalled from simulated M365 health memory [Source: Work IQ]."
       },
       {
         label: "Fabric IQ",
-        value: `${Math.round(communityScore * 100)}%`,
-        detail: isRespiratory
-          ? "Community respiratory signal included in synthesis."
-          : "No elevated regional signal in demo community dataset."
+        value: `${Math.round(assessment.communityScore * 100)}%`,
+        detail:
+          assessment.isOutbreak
+            ? "Community respiratory signal was included in the synthesis [Source: Fabric IQ]."
+            : assessment.historyMatches.length > 0
+              ? "Community context was used as a background signal [Source: Fabric IQ]."
+              : "No elevated regional signal in the demo community dataset [Source: Fabric IQ]."
       }
     ],
     timeline,
@@ -187,25 +352,24 @@ function createMockResult(request: TriageRequest): TriageResult {
       patient_summary: {
         patient_id: request.userId,
         region: request.region,
-        risk_level: displayRisk,
-        risk_score: score
+        risk_level: assessment.riskLevel,
+        risk_score: assessment.score
       },
       reported_symptoms: request.symptoms,
       medical_context: citations.map((source) => ({
-        claim:
-          isEmergency
-            ? "These symptoms may indicate a time-sensitive condition and require urgent assessment."
-            : "These symptoms may be non-emergency when no danger signs are present, but should be monitored.",
-        confidence: score,
+        claim: medicalContextClaim,
+        confidence: assessment.score,
         source
       })),
       health_history: timeline,
       community_context: communityContext,
       recommended_tests:
-        isEmergency
+        assessment.riskLevel === "high"
           ? ["Emergency clinician assessment", "Vital signs and oxygen saturation", "ECG if clinically appropriate"]
-          : ["Primary care assessment if symptoms persist", "Medication and vital-sign review"],
-      recommended_next_steps: actionPlan,
+          : assessment.riskLevel === "medium"
+            ? ["Primary care assessment if symptoms persist", "Medication and allergy review", "Pulse oximetry if breathing is involved"]
+            : ["Primary care assessment if symptoms persist", "Medication and vital-sign review"],
+      recommended_next_steps: assessment.actionPlan,
       citations
     },
     citations,

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 from typing import Any
 
 from azure.ai.projects import AIProjectClient
@@ -25,40 +26,80 @@ def _contains_any(text: str, keywords: list[str]) -> bool:
     return any(keyword in lowered for keyword in keywords)
 
 
+def _phrase_present(text: str, phrase: str) -> bool:
+    pattern = rf"\b{re.escape(phrase)}\b"
+    return bool(re.search(pattern, text, flags=re.IGNORECASE))
+
+
+def _phrase_is_negated(text: str, phrase: str) -> bool:
+    pattern = rf"\b(?:no|not|without|denies|denied|free of)\b(?:\W+\w+){{0,3}}\W+{re.escape(phrase)}\b"
+    return bool(re.search(pattern, text, flags=re.IGNORECASE))
+
+
+def _active_phrases(text: str, phrases: list[str]) -> list[str]:
+    active: list[str] = []
+    for phrase in phrases:
+        if _phrase_present(text, phrase) and not _phrase_is_negated(text, phrase):
+            active.append(phrase)
+    return active
+
+
+def _calibrated_confidence(query: str, text: str | None = None) -> float:
+    combined = f"{query} {text or ''}"
+    emergency_terms = _active_phrases(combined, ["chest pain", "shortness of breath", "difficulty breathing"])
+    viral_terms = _active_phrases(combined, ["fever", "body aches", "cough", "sore throat"])
+    headache_terms = _active_phrases(combined, ["mild headache", "headache", "fatigue"])
+
+    if emergency_terms:
+        return 0.92
+    if len(viral_terms) >= 2:
+        return 0.74
+    if viral_terms:
+        return 0.58
+    if headache_terms:
+        return 0.46
+    return 0.55 if text and text.strip() else 0.42
+
+
 def _offline_foundry_results(query: str) -> JsonDict:
     results: list[JsonDict] = []
     citations: list[str] = []
-    confidence = 0.48
+    confidence = 0.42
 
-    if _contains_any(query, ["chest pain", "shortness of breath", "difficulty breathing"]):
+    emergency_terms = _active_phrases(query, ["chest pain", "shortness of breath", "difficulty breathing"])
+    if emergency_terms:
         results.append(
             {
                 "claim": (
-                    "Chest pain with breathing difficulty may indicate urgent "
-                    "cardiac, pulmonary, or vascular risk. "
+                    "Chest pain or breathing difficulty may indicate urgent "
+                    "cardiac, pulmonary, or vascular risk when it is not clearly "
+                    "explained by a benign cause. "
                     "[Source: Foundry IQ Emergency Medicine Guidance]"
                 ),
                 "source": "Foundry IQ Emergency Medicine Guidance",
             }
         )
         citations.append("Foundry IQ Emergency Medicine Guidance")
-        confidence = max(confidence, 0.91)
+        confidence = max(confidence, 0.92)
 
-    if _contains_any(query, ["fever", "body aches", "cough", "sore throat"]):
+    viral_terms = _active_phrases(query, ["fever", "body aches", "cough", "sore throat"])
+    if viral_terms:
         results.append(
             {
                 "claim": (
-                    "Fever, fatigue, and body aches may indicate an influenza-like "
-                    "or other respiratory viral illness. "
+                    "Fever, body aches, cough, or sore throat may indicate an "
+                    "influenza-like or other respiratory viral illness, especially "
+                    "when community spread is active. "
                     "[Source: CDC Respiratory Guidance]"
                 ),
                 "source": "CDC Respiratory Guidance",
             }
         )
         citations.append("CDC Respiratory Guidance")
-        confidence = max(confidence, 0.78)
+        confidence = max(confidence, 0.74)
 
-    if _contains_any(query, ["headache", "mild headache"]):
+    headache_terms = _active_phrases(query, ["mild headache", "headache", "fatigue"])
+    if headache_terms and not emergency_terms:
         results.append(
             {
                 "claim": (
@@ -70,7 +111,7 @@ def _offline_foundry_results(query: str) -> JsonDict:
             }
         )
         citations.append("Foundry IQ Primary Care Guidance")
-        confidence = max(confidence, 0.49)
+        confidence = max(confidence, 0.46)
 
     if not results:
         results.append(
@@ -118,11 +159,12 @@ async def foundry_iq_search(query: str) -> JsonDict:
         )
         text = getattr(response, "output_text", "") or str(response)
         source = "Foundry IQ Knowledge Base"
+        confidence = _calibrated_confidence(query, text)
         return {
             "query": query,
             "results": [{"claim": f"{text[:1200]} [Source: {source}]", "source": source}],
             "citations": [source],
-            "confidence": 0.82,
+            "confidence": round(confidence, 2),
             "connection_status": "connected",
         }
     except Exception as exc:
