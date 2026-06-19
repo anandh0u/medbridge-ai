@@ -564,20 +564,29 @@ function normalizeBackendResult(payload: unknown, request: TriageRequest): Triag
 export async function requestTriage(request: TriageRequest): Promise<TriageResult> {
   const baseUrl = import.meta.env.VITE_MEDBRIDGE_API_URL;
   if (baseUrl) {
-    const response = await fetch(`${baseUrl.replace(/\/$/, "")}/triage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        symptoms: request.symptoms,
-        user_id: request.userId,
-        region: request.region
-      })
-    });
-    if (!response.ok) {
-      throw new Error(`Triage request failed with ${response.status}`);
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 12000);
+    try {
+      const response = await fetch(`${baseUrl.replace(/\/$/, "")}/triage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          symptoms: request.symptoms,
+          user_id: request.userId,
+          region: request.region
+        }),
+        signal: controller.signal
+      });
+      if (!response.ok) {
+        throw new Error(`Triage request failed with ${response.status}`);
+      }
+      const payload = (await response.json()) as unknown;
+      return asRecord(payload).action_plan ? (payload as TriageResult) : normalizeBackendResult(payload, request);
+    } catch (error) {
+      console.warn("Live triage API unavailable. Falling back to the local deterministic engine.", error);
+    } finally {
+      window.clearTimeout(timeoutId);
     }
-    const payload = (await response.json()) as unknown;
-    return asRecord(payload).action_plan ? (payload as TriageResult) : normalizeBackendResult(payload, request);
   }
 
   await new Promise((resolve) => window.setTimeout(resolve, 650));

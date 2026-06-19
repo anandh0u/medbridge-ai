@@ -54,6 +54,7 @@ npm run dev
 
 9. Show symptom triage, Work IQ timeline, Fabric IQ panel, citations, and doctor
    briefing.
-10. Close with the safety message: MedBridge AI does not diagnose and always
-    recommends consulting a licensed medical professional.
-
+10. Show the new browser login flow with sign-up, sign-in, and the judge pass
+    entry mode before the dashboard.
+11. Close with the safety message: MedBridge AI does not diagnose and always
+   recommends consulting a licensed medical professional.

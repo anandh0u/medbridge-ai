@@ -15,7 +15,6 @@ import {
   type AuthMode,
   type AuthSession,
   createAccount,
-  JUDGE_ENTRY_CODE,
   signInWithCredentials,
   signInWithJudgePass
 } from "./auth";
@@ -363,7 +362,7 @@ export function LoginScreen({ onSignIn }: LoginScreenProps): ReactElement {
                     autoComplete="one-time-code"
                     id={fieldId("judge", "passcode")}
                     onChange={(event) => setJudgePasscode(event.target.value)}
-                    placeholder={JUDGE_ENTRY_CODE}
+                    placeholder="Enter shared judge pass"
                     required
                     value={judgePasscode}
                   />

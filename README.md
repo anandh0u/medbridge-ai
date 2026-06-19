@@ -45,6 +45,7 @@ MedBridge AI is designed to be useful in the real world, not just impressive in 
 
 The public demo is built to be visually clear and easy to judge:
 
+- A real entry gate with `Sign in`, `Create account`, and `Judge pass` modes.
 - Scenario buttons for `Low`, `Outbreak`, and `Emergency`.
 - A large risk card with a visible emergency flag when needed.
 - A parallel IQ panel that shows the three information layers side by side.
@@ -62,6 +63,14 @@ If you are analyzing the project, these are the main things to look at:
 - The safety posture is explicit: MedBridge AI does not diagnose and always recommends a licensed medical professional.
 - The frontend is intentionally polished so the story is easy to understand in under a minute.
 - The backend is Foundry-ready, while the public demo stays quota-safe so the project remains accessible.
+- If the live API is unavailable, the frontend falls back to the local deterministic triage engine so the demo still works.
+
+## How To Enter
+
+- New users can create a browser-local account with email and password.
+- Returning users can sign in with the same email and password.
+- Judges can use the free-entry pass to get straight to the dashboard without a password.
+- The demo session stays in the browser, which keeps the hackathon flow fast and repeatable.
 
 ## Live Demo
 
@@ -79,6 +88,11 @@ GitHub repository: https://github.com/anandh0u/medbridge-ai
 - React
 - Vite
 - TypeScript
+
+## Environment
+
+- `VITE_MEDBRIDGE_API_URL` points the frontend to the live triage API when it is available.
+- `VITE_MEDBRIDGE_JUDGE_PASS` sets the shared judge pass for the free-entry mode.
 
 ## Safety
 
