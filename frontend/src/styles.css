@@ -35,7 +35,8 @@ body {
 
 button,
 input,
-textarea {
+textarea,
+select {
   font: inherit;
 }
 
@@ -46,6 +47,165 @@ a {
 .app-shell {
   min-height: 100vh;
   padding: 24px;
+}
+
+.auth-shell {
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.auth-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr);
+  gap: 18px;
+  max-width: 1480px;
+  min-height: calc(100vh - 48px);
+  margin: 0 auto;
+  align-items: stretch;
+}
+
+.auth-hero {
+  background:
+    linear-gradient(180deg, rgba(238, 247, 246, 0.9) 0, rgba(246, 248, 251, 0.98) 100%),
+    #f6f8fb;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 20px;
+  min-height: calc(100vh - 48px);
+  padding: 32px;
+}
+
+.auth-copy {
+  display: grid;
+  gap: 12px;
+  max-width: 760px;
+}
+
+.auth-copy h1 {
+  margin: 0;
+  font-size: clamp(2.4rem, 4vw, 4rem);
+  line-height: 0.98;
+  max-width: 12ch;
+}
+
+.auth-feature-list {
+  display: grid;
+  gap: 12px;
+  max-width: 680px;
+  margin-top: 12px;
+}
+
+.auth-feature {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+
+.auth-feature:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.auth-feature svg {
+  color: var(--teal-strong);
+  margin-top: 2px;
+}
+
+.auth-feature strong {
+  display: block;
+  color: #0f172a;
+  margin-bottom: 3px;
+}
+
+.auth-feature span {
+  color: var(--muted);
+}
+
+.auth-note {
+  color: var(--muted);
+  margin: 0;
+}
+
+.auth-panel {
+  align-self: center;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 14px;
+  padding: 24px;
+}
+
+.auth-form {
+  display: grid;
+  gap: 14px;
+}
+
+.auth-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.auth-primary,
+.secondary-button {
+  width: 100%;
+  min-height: 48px;
+}
+
+.secondary-button {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #111827;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.secondary-button:hover {
+  border-color: #bfd2dc;
+  background: #f8fbfc;
+}
+
+.session-bar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  max-width: 1480px;
+  margin: 0 auto 18px;
+  padding: 14px 18px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.session-bar h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.session-bar .muted {
+  margin-top: 4px;
+}
+
+.session-bar .secondary-button {
+  width: auto;
+  min-width: 128px;
+  flex: 0 0 auto;
 }
 
 .dashboard-grid {
@@ -195,7 +355,8 @@ a {
 }
 
 textarea,
-input {
+input,
+select {
   width: 100%;
   border: 1px solid #b7c1ce;
   border-radius: 8px;
@@ -205,6 +366,10 @@ input {
   outline: none;
 }
 
+select {
+  appearance: none;
+}
+
 textarea {
   min-height: 190px;
   resize: vertical;
@@ -212,6 +377,7 @@ textarea {
 
 textarea:focus,
 input:focus,
+select:focus,
 button:focus-visible,
 a:focus-visible {
   outline: 3px solid rgba(29, 78, 216, 0.35);
@@ -520,12 +686,18 @@ a:focus-visible {
 }
 
 @media (max-width: 1120px) {
+  .auth-layout,
   .dashboard-grid {
     grid-template-columns: 1fr 1fr;
   }
 
+  .session-bar,
   .briefing-column {
     grid-column: 1 / -1;
+  }
+
+  .auth-hero {
+    min-height: auto;
   }
 
   .intake-panel {
@@ -535,23 +707,38 @@ a:focus-visible {
 }
 
 @media (max-width: 760px) {
-  .app-shell {
+  .app-shell,
+  .auth-shell {
     padding: 12px;
   }
 
+  .auth-layout,
   .dashboard-grid,
   .field-grid,
   .scenario-control,
   .metric-grid,
-  .briefing-columns {
+  .briefing-columns,
+  .auth-actions,
+  .session-bar {
     grid-template-columns: 1fr;
+  }
+
+  .session-bar,
+  .auth-actions {
+    display: grid;
+  }
+
+  .auth-hero,
+  .auth-panel {
+    padding: 20px;
   }
 
   .scenario-control svg {
     display: none;
   }
 
-  .panel-heading h1 {
+  .panel-heading h1,
+  .auth-copy h1 {
     font-size: 2.45rem;
     max-width: 12ch;
   }

@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactElement } from "react";
 import { Briefing } from "./Briefing";
+import { LoginScreen, type AuthSession } from "./LoginScreen";
 import { ReasoningPanel } from "./ReasoningPanel";
 import { RiskPanel } from "./RiskPanel";
 import { SignalPanel } from "./SignalPanel";
@@ -33,7 +34,38 @@ const scenarios = [
   }
 ] as const;
 
+const SESSION_KEY = "medbridge-auth-session";
+
+function loadSession(): AuthSession | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(SESSION_KEY);
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw) as Partial<AuthSession>;
+    if (!parsed.fullName || !parsed.email || !parsed.role || !parsed.organization || !parsed.accessCode) {
+      return null;
+    }
+
+    return {
+      fullName: parsed.fullName,
+      email: parsed.email,
+      role: parsed.role,
+      organization: parsed.organization,
+      accessCode: parsed.accessCode
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function App(): ReactElement {
+  const [session, setSession] = useState<AuthSession | null>(() => loadSession());
   const [symptoms, setSymptoms] = useState("Mild headache and fatigue since this morning");
   const [userId, setUserId] = useState("demo-patient-001");
   const [region, setRegion] = useState("South India");
@@ -41,6 +73,32 @@ export function App(): ReactElement {
   const [result, setResult] = useState<TriageResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (session) {
+      window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    } else {
+      window.localStorage.removeItem(SESSION_KEY);
+    }
+  }, [session]);
+
+  function resetDashboardState(): void {
+    setSymptoms("Mild headache and fatigue since this morning");
+    setUserId("demo-patient-001");
+    setRegion("South India");
+    setActiveScenario("low");
+    setResult(null);
+    setError(null);
+  }
+
+  function handleSignIn(nextSession: AuthSession): void {
+    setSession(nextSession);
+    resetDashboardState();
+  }
 
   async function handleSubmit(): Promise<void> {
     setIsLoading(true);
@@ -66,8 +124,29 @@ export function App(): ReactElement {
     setError(null);
   }
 
+  function handleSignOut(): void {
+    setSession(null);
+    resetDashboardState();
+  }
+
+  if (!session) {
+    return <LoginScreen onSignIn={handleSignIn} />;
+  }
+
   return (
     <main className="app-shell">
+      <section className="session-bar" aria-label="Signed in session">
+        <div>
+          <p className="eyebrow">Signed in</p>
+          <h2>{session.fullName}</h2>
+          <p className="muted">
+            {session.role} &middot; {session.organization}
+          </p>
+        </div>
+        <button className="secondary-button" onClick={handleSignOut} type="button">
+          Sign out
+        </button>
+      </section>
       <section className="dashboard-grid">
         <SymptomInput
           symptoms={symptoms}
