@@ -24,6 +24,15 @@ test("runs the default low-risk triage flow", async ({ page }) => {
   expect(consoleErrors).toEqual([]);
 });
 
+test("blocks dashboard access when the access code is invalid", async ({ page }) => {
+  await page.goto("http://127.0.0.1:5173");
+  await page.getByLabel("Demo access code").fill("WRONG-CODE");
+  await page.getByRole("button", { name: /sign in to dashboard/i }).click();
+  await expect(page.getByRole("heading", { name: "Sign in to the community health dashboard" })).toBeVisible();
+  await expect(page.getByRole("alert")).toContainText(/access code not recognized/i);
+  await expect(page.getByRole("heading", { name: "Community health navigator" })).toHaveCount(0);
+});
+
 test("flags high-risk emergency symptoms", async ({ page }) => {
   await page.goto("http://127.0.0.1:5173");
   await signIn(page);

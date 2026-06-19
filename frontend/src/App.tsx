@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ReactElement } from "react";
 import { Briefing } from "./Briefing";
-import { LoginScreen, type AuthSession } from "./LoginScreen";
+import { DEMO_ACCESS_CODE, LoginScreen, type AuthSession } from "./LoginScreen";
 import { ReasoningPanel } from "./ReasoningPanel";
 import { RiskPanel } from "./RiskPanel";
 import { SignalPanel } from "./SignalPanel";
@@ -48,7 +48,14 @@ function loadSession(): AuthSession | null {
     }
 
     const parsed = JSON.parse(raw) as Partial<AuthSession>;
-    if (!parsed.fullName || !parsed.email || !parsed.role || !parsed.organization || !parsed.accessCode) {
+    if (
+      !parsed.fullName ||
+      !parsed.email ||
+      !parsed.role ||
+      !parsed.organization ||
+      !parsed.accessCode ||
+      parsed.accessCode.toUpperCase() !== DEMO_ACCESS_CODE
+    ) {
       return null;
     }
 

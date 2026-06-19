@@ -133,6 +133,16 @@ a {
   margin: 0;
 }
 
+.auth-error {
+  margin: -2px 0 0;
+  color: #991b1b;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-weight: 700;
+}
+
 .auth-panel {
   align-self: center;
   background: var(--panel);

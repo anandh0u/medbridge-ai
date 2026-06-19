@@ -4,6 +4,8 @@ import type { FormEvent, ReactElement } from "react";
 
 export type UserRole = "Clinician" | "Reviewer" | "Coordinator";
 
+export const DEMO_ACCESS_CODE = "MEDBRIDGE-DEMO";
+
 export interface AuthSession {
   fullName: string;
   email: string;
@@ -21,7 +23,7 @@ const demoSession: AuthSession = {
   email: "anandhu@medbridge.ai",
   role: "Reviewer",
   organization: "MedBridge Hackathon Demo",
-  accessCode: "MEDBRIDGE-DEMO"
+  accessCode: DEMO_ACCESS_CODE
 };
 
 function fieldId(name: string): string {
@@ -34,9 +36,20 @@ export function LoginScreen({ onSignIn }: LoginScreenProps): ReactElement {
   const [role, setRole] = useState<UserRole>(demoSession.role);
   const [organization, setOrganization] = useState(demoSession.organization);
   const [accessCode, setAccessCode] = useState(demoSession.accessCode);
+  const [error, setError] = useState<string | null>(null);
+
+  function isAllowedAccessCode(value: string): boolean {
+    return value.trim().toUpperCase() === DEMO_ACCESS_CODE;
+  }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
+    if (!isAllowedAccessCode(accessCode)) {
+      setError("Access code not recognized. Use the approved demo access code to enter the dashboard.");
+      return;
+    }
+
+    setError(null);
     onSignIn({
       fullName: fullName.trim(),
       email: email.trim(),
@@ -47,6 +60,7 @@ export function LoginScreen({ onSignIn }: LoginScreenProps): ReactElement {
   }
 
   function loadDemoProfile(): void {
+    setError(null);
     setFullName(demoSession.fullName);
     setEmail(demoSession.email);
     setRole(demoSession.role);
@@ -156,6 +170,11 @@ export function LoginScreen({ onSignIn }: LoginScreenProps): ReactElement {
                 value={accessCode}
               />
             </label>
+            {error ? (
+              <p className="auth-error" role="alert">
+                {error}
+              </p>
+            ) : null}
             <div className="auth-actions">
               <button className="primary-button auth-primary" type="submit">
                 <ArrowRight size={18} />
@@ -167,7 +186,7 @@ export function LoginScreen({ onSignIn }: LoginScreenProps): ReactElement {
               </button>
             </div>
             <p className="muted auth-fineprint">
-              No external account is required for the hackathon demo.
+              No external account is required for the hackathon demo. The dashboard opens only after the approved access code is accepted.
             </p>
           </form>
         </section>
