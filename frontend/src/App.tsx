@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import type { ReactElement } from "react";
 import { Briefing } from "./Briefing";
-import { DEMO_ACCESS_CODE, LoginScreen, type AuthSession } from "./LoginScreen";
+import { authMethodLabel, clearAuthSession, loadAuthSession, SESSION_KEY, type AuthSession } from "./auth";
+import { LoginScreen } from "./LoginScreen";
 import { ReasoningPanel } from "./ReasoningPanel";
 import { RiskPanel } from "./RiskPanel";
 import { SignalPanel } from "./SignalPanel";
@@ -34,45 +35,8 @@ const scenarios = [
   }
 ] as const;
 
-const SESSION_KEY = "medbridge-auth-session";
-
-function loadSession(): AuthSession | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  try {
-    const raw = window.localStorage.getItem(SESSION_KEY);
-    if (!raw) {
-      return null;
-    }
-
-    const parsed = JSON.parse(raw) as Partial<AuthSession>;
-    if (
-      !parsed.fullName ||
-      !parsed.email ||
-      !parsed.role ||
-      !parsed.organization ||
-      !parsed.accessCode ||
-      parsed.accessCode.toUpperCase() !== DEMO_ACCESS_CODE
-    ) {
-      return null;
-    }
-
-    return {
-      fullName: parsed.fullName,
-      email: parsed.email,
-      role: parsed.role,
-      organization: parsed.organization,
-      accessCode: parsed.accessCode
-    };
-  } catch {
-    return null;
-  }
-}
-
 export function App(): ReactElement {
-  const [session, setSession] = useState<AuthSession | null>(() => loadSession());
+  const [session, setSession] = useState<AuthSession | null>(() => loadAuthSession());
   const [symptoms, setSymptoms] = useState("Mild headache and fatigue since this morning");
   const [userId, setUserId] = useState("demo-patient-001");
   const [region, setRegion] = useState("South India");
@@ -89,7 +53,7 @@ export function App(): ReactElement {
     if (session) {
       window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     } else {
-      window.localStorage.removeItem(SESSION_KEY);
+      clearAuthSession();
     }
   }, [session]);
 
@@ -132,6 +96,7 @@ export function App(): ReactElement {
   }
 
   function handleSignOut(): void {
+    clearAuthSession();
     setSession(null);
     resetDashboardState();
   }
@@ -147,7 +112,7 @@ export function App(): ReactElement {
           <p className="eyebrow">Signed in</p>
           <h2>{session.fullName}</h2>
           <p className="muted">
-            {session.role} &middot; {session.organization}
+            {authMethodLabel(session.authMethod)} &middot; {session.role} &middot; {session.organization}
           </p>
         </div>
         <button className="secondary-button" onClick={handleSignOut} type="button">

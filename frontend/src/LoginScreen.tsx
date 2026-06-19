@@ -1,71 +1,118 @@
-import { ArrowRight, Activity, LogIn, MapPinned, ShieldCheck, UserRound } from "lucide-react";
+import {
+  ArrowRight,
+  BadgeCheck,
+  LogIn,
+  MapPinned,
+  ShieldCheck,
+  UserRoundPlus
+} from "lucide-react";
 import { useState } from "react";
 import type { FormEvent, ReactElement } from "react";
-
-export type UserRole = "Clinician" | "Reviewer" | "Coordinator";
-
-export const DEMO_ACCESS_CODE = "MEDBRIDGE-DEMO";
-
-export interface AuthSession {
-  fullName: string;
-  email: string;
-  role: UserRole;
-  organization: string;
-  accessCode: string;
-}
+import {
+  ACCOUNT_ROLES,
+  SAMPLE_PROFILE,
+  type AccountRole,
+  type AuthMode,
+  type AuthSession,
+  createAccount,
+  JUDGE_ENTRY_CODE,
+  signInWithCredentials,
+  signInWithJudgePass
+} from "./auth";
 
 interface LoginScreenProps {
   onSignIn: (session: AuthSession) => void;
 }
 
-const demoSession: AuthSession = {
-  fullName: "Anandhu P",
-  email: "anandhu@medbridge.ai",
-  role: "Reviewer",
-  organization: "MedBridge Hackathon Demo",
-  accessCode: DEMO_ACCESS_CODE
-};
+function fieldId(mode: AuthMode, name: string): string {
+  return `auth-${mode}-${name}`;
+}
 
-function fieldId(name: string): string {
-  return `login-${name}`;
+function isAccountRole(value: string): value is AccountRole {
+  return ACCOUNT_ROLES.includes(value as AccountRole);
 }
 
 export function LoginScreen({ onSignIn }: LoginScreenProps): ReactElement {
-  const [fullName, setFullName] = useState(demoSession.fullName);
-  const [email, setEmail] = useState(demoSession.email);
-  const [role, setRole] = useState<UserRole>(demoSession.role);
-  const [organization, setOrganization] = useState(demoSession.organization);
-  const [accessCode, setAccessCode] = useState(demoSession.accessCode);
+  const [activeMode, setActiveMode] = useState<AuthMode>("signin");
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function isAllowedAccessCode(value: string): boolean {
-    return value.trim().toUpperCase() === DEMO_ACCESS_CODE;
+  const [signInEmail, setSignInEmail] = useState("");
+  const [signInPassword, setSignInPassword] = useState("");
+
+  const [signUpFullName, setSignUpFullName] = useState(SAMPLE_PROFILE.fullName);
+  const [signUpEmail, setSignUpEmail] = useState(SAMPLE_PROFILE.email);
+  const [signUpPassword, setSignUpPassword] = useState("");
+  const [signUpRole, setSignUpRole] = useState<AccountRole>(SAMPLE_PROFILE.role);
+  const [signUpOrganization, setSignUpOrganization] = useState(SAMPLE_PROFILE.organization);
+
+  const [judgeDisplayName, setJudgeDisplayName] = useState("Judge Access");
+  const [judgePasscode, setJudgePasscode] = useState("");
+
+  function activateMode(mode: AuthMode): void {
+    setActiveMode(mode);
+    setError(null);
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>): void {
+  async function handleSignIn(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    if (!isAllowedAccessCode(accessCode)) {
-      setError("Access code not recognized. Use the approved demo access code to enter the dashboard.");
-      return;
-    }
-
+    setIsSubmitting(true);
     setError(null);
-    onSignIn({
-      fullName: fullName.trim(),
-      email: email.trim(),
-      role,
-      organization: organization.trim(),
-      accessCode: accessCode.trim()
-    });
+
+    try {
+      const session = signInWithCredentials({
+        email: signInEmail,
+        password: signInPassword
+      });
+      onSignIn(session);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to sign in right now.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
-  function loadDemoProfile(): void {
+  async function handleSignUp(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    setIsSubmitting(true);
     setError(null);
-    setFullName(demoSession.fullName);
-    setEmail(demoSession.email);
-    setRole(demoSession.role);
-    setOrganization(demoSession.organization);
-    setAccessCode(demoSession.accessCode);
+
+    try {
+      if (!isAccountRole(signUpRole)) {
+        throw new Error("Pick a clinician, reviewer, or coordinator role before signing up.");
+      }
+
+      const session = createAccount({
+        fullName: signUpFullName,
+        email: signUpEmail,
+        password: signUpPassword,
+        role: signUpRole,
+        organization: signUpOrganization
+      });
+      onSignIn(session);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to create your account right now.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleJudgePass(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const session = signInWithJudgePass({
+        displayName: judgeDisplayName,
+        passcode: judgePasscode
+      });
+      onSignIn(session);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to validate the judge pass.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -74,7 +121,7 @@ export function LoginScreen({ onSignIn }: LoginScreenProps): ReactElement {
         <div className="auth-hero">
           <div className="auth-copy">
             <p className="eyebrow">MedBridge AI</p>
-            <h1>Sign in to the community health dashboard</h1>
+            <h1>Sign in, create an account, or use the judge pass</h1>
             <p className="muted">
               Open the triage workspace, review the parallel IQ signals, and brief the next clinician in one pass.
             </p>
@@ -82,113 +129,262 @@ export function LoginScreen({ onSignIn }: LoginScreenProps): ReactElement {
 
           <div className="auth-feature-list" aria-label="Product highlights">
             <div className="auth-feature">
-              <ShieldCheck size={18} />
+              <UserRoundPlus size={18} />
               <div>
-                <strong>Parallel IQ triage</strong>
-                <span>Foundry, Work, and Fabric context moves together.</span>
+                <strong>Create your own account</strong>
+                <span>Sign up with email, password, role, and organization.</span>
               </div>
             </div>
             <div className="auth-feature">
-              <Activity size={18} />
+              <ShieldCheck size={18} />
               <div>
-                <strong>Risk-first briefing</strong>
-                <span>Emergency flags and doctor notes stay visible.</span>
+                <strong>Judge free entry</strong>
+                <span>Reviewers can enter with the shared pass and skip password entry.</span>
               </div>
             </div>
             <div className="auth-feature">
               <MapPinned size={18} />
               <div>
-                <strong>Local demo session</strong>
-                <span>Your sign-in lives in this browser only.</span>
+                <strong>Browser-local session</strong>
+                <span>Your sign-in stays in this browser for the demo.</span>
               </div>
             </div>
           </div>
 
-          <p className="auth-note">This demo keeps the session in your browser only.</p>
+          <p className="auth-note">This demo keeps accounts and sessions in your browser only.</p>
         </div>
 
-        <section className="auth-panel">
-          <div className="panel-title">
-            <LogIn size={20} />
-            <h2>Workspace login</h2>
-          </div>
-          <form className="auth-form" onSubmit={handleSubmit}>
-            <label className="field">
-              <span>Full name</span>
-              <input
-                autoComplete="name"
-                id={fieldId("full-name")}
-                onChange={(event) => setFullName(event.target.value)}
-                placeholder="Anandhu P"
-                required
-                value={fullName}
-              />
-            </label>
-            <label className="field">
-              <span>Work email</span>
-              <input
-                autoComplete="email"
-                id={fieldId("email")}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="anandhu@medbridge.ai"
-                required
-                type="email"
-                value={email}
-              />
-            </label>
-            <label className="field">
-              <span>Role</span>
-              <select
-                id={fieldId("role")}
-                onChange={(event) => setRole(event.target.value as UserRole)}
-                value={role}
-              >
-                <option value="Clinician">Clinician</option>
-                <option value="Reviewer">Reviewer</option>
-                <option value="Coordinator">Coordinator</option>
-              </select>
-            </label>
-            <label className="field">
-              <span>Organization</span>
-              <input
-                autoComplete="organization"
-                id={fieldId("organization")}
-                onChange={(event) => setOrganization(event.target.value)}
-                placeholder="MedBridge Hackathon Demo"
-                required
-                value={organization}
-              />
-            </label>
-            <label className="field">
-              <span>Demo access code</span>
-              <input
-                autoComplete="one-time-code"
-                id={fieldId("access-code")}
-                onChange={(event) => setAccessCode(event.target.value)}
-                placeholder="MEDBRIDGE-DEMO"
-                required
-                value={accessCode}
-              />
-            </label>
-            {error ? (
-              <p className="auth-error" role="alert">
-                {error}
+        <section className="auth-panel" aria-labelledby="auth-panel-heading">
+          <div className="auth-panel-header">
+            <div>
+              <p className="eyebrow">Entry gate</p>
+              <h2 id="auth-panel-heading">Choose how to enter</h2>
+              <p className="muted">
+                Create an account, return with email and password, or use the judge pass for free entry.
               </p>
-            ) : null}
-            <div className="auth-actions">
-              <button className="primary-button auth-primary" type="submit">
-                <ArrowRight size={18} />
-                <span>Sign in to dashboard</span>
-              </button>
-              <button className="secondary-button" type="button" onClick={loadDemoProfile}>
-                <UserRound size={18} />
-                <span>Load demo profile</span>
-              </button>
             </div>
-            <p className="muted auth-fineprint">
-              No external account is required for the hackathon demo. The dashboard opens only after the approved access code is accepted.
-            </p>
-          </form>
+            <div className="auth-badge">
+              <BadgeCheck size={16} />
+              <span>Local demo session</span>
+            </div>
+          </div>
+
+          <div className="auth-tabs" role="tablist" aria-label="Authentication modes">
+            <button
+              aria-selected={activeMode === "signin"}
+              className={`auth-tab${activeMode === "signin" ? " active" : ""}`}
+              id={fieldId("signin", "tab")}
+              onClick={() => activateMode("signin")}
+              role="tab"
+              type="button"
+            >
+              <LogIn size={16} />
+              <span>Sign in</span>
+            </button>
+            <button
+              aria-selected={activeMode === "signup"}
+              className={`auth-tab${activeMode === "signup" ? " active" : ""}`}
+              id={fieldId("signup", "tab")}
+              onClick={() => activateMode("signup")}
+              role="tab"
+              type="button"
+            >
+              <UserRoundPlus size={16} />
+              <span>Create account</span>
+            </button>
+            <button
+              aria-selected={activeMode === "judge"}
+              className={`auth-tab${activeMode === "judge" ? " active" : ""}`}
+              id={fieldId("judge", "tab")}
+              onClick={() => activateMode("judge")}
+              role="tab"
+              type="button"
+            >
+              <ShieldCheck size={16} />
+              <span>Judge pass</span>
+            </button>
+          </div>
+
+          <div className="auth-panels">
+            {activeMode === "signin" ? (
+              <form
+                aria-labelledby={fieldId("signin", "tab")}
+                className="auth-form auth-form-stack"
+                onSubmit={handleSignIn}
+                role="tabpanel"
+              >
+                <label className="field">
+                  <span>Email address</span>
+                  <input
+                    autoComplete="email"
+                    id={fieldId("signin", "email")}
+                    onChange={(event) => setSignInEmail(event.target.value)}
+                    placeholder="anandhu@medbridge.ai"
+                    required
+                    type="email"
+                    value={signInEmail}
+                  />
+                </label>
+                <label className="field">
+                  <span>Password</span>
+                  <input
+                    autoComplete="current-password"
+                    id={fieldId("signin", "password")}
+                    onChange={(event) => setSignInPassword(event.target.value)}
+                    placeholder="Enter your password"
+                    required
+                    type="password"
+                    value={signInPassword}
+                  />
+                </label>
+                {error ? (
+                  <p className="auth-error" role="alert">
+                    {error}
+                  </p>
+                ) : null}
+                <div className="auth-actions">
+                  <button className="primary-button auth-primary" disabled={isSubmitting} type="submit">
+                    <ArrowRight size={18} />
+                    <span>Enter dashboard</span>
+                  </button>
+                </div>
+                <p className="muted auth-fineprint">
+                  Returning users can sign in with the account they created here. Judges should switch to the judge pass tab.
+                </p>
+              </form>
+            ) : null}
+
+            {activeMode === "signup" ? (
+              <form
+                aria-labelledby={fieldId("signup", "tab")}
+                className="auth-form auth-form-stack"
+                onSubmit={handleSignUp}
+                role="tabpanel"
+              >
+                <div className="field-grid">
+                  <label className="field">
+                    <span>Full name</span>
+                    <input
+                      autoComplete="name"
+                      id={fieldId("signup", "full-name")}
+                      onChange={(event) => setSignUpFullName(event.target.value)}
+                      placeholder="Anandhu P"
+                      required
+                      value={signUpFullName}
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Organization</span>
+                    <input
+                      autoComplete="organization"
+                      id={fieldId("signup", "organization")}
+                      onChange={(event) => setSignUpOrganization(event.target.value)}
+                      placeholder="MedBridge Hackathon Demo"
+                      required
+                      value={signUpOrganization}
+                    />
+                  </label>
+                </div>
+                <div className="field-grid">
+                  <label className="field">
+                    <span>Email address</span>
+                    <input
+                      autoComplete="email"
+                      id={fieldId("signup", "email")}
+                      onChange={(event) => setSignUpEmail(event.target.value)}
+                      placeholder="anandhu@medbridge.ai"
+                      required
+                      type="email"
+                      value={signUpEmail}
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Password</span>
+                    <input
+                      autoComplete="new-password"
+                      id={fieldId("signup", "password")}
+                      onChange={(event) => setSignUpPassword(event.target.value)}
+                      placeholder="Create a password"
+                      required
+                      type="password"
+                      value={signUpPassword}
+                    />
+                  </label>
+                </div>
+                <label className="field">
+                  <span>Role</span>
+                  <select
+                    id={fieldId("signup", "role")}
+                    onChange={(event) => setSignUpRole(event.target.value as AccountRole)}
+                    value={signUpRole}
+                  >
+                    <option value="Clinician">Clinician</option>
+                    <option value="Reviewer">Reviewer</option>
+                    <option value="Coordinator">Coordinator</option>
+                  </select>
+                </label>
+                {error ? (
+                  <p className="auth-error" role="alert">
+                    {error}
+                  </p>
+                ) : null}
+                <div className="auth-actions">
+                  <button className="primary-button auth-primary" disabled={isSubmitting} type="submit">
+                    <ArrowRight size={18} />
+                    <span>Create and enter</span>
+                  </button>
+                </div>
+                <p className="muted auth-fineprint">
+                  The first sign-up is enough. After that, the same email and password will bring you back here.
+                </p>
+              </form>
+            ) : null}
+
+            {activeMode === "judge" ? (
+              <form
+                aria-labelledby={fieldId("judge", "tab")}
+                className="auth-form auth-form-stack"
+                onSubmit={handleJudgePass}
+                role="tabpanel"
+              >
+                <label className="field">
+                  <span>Display name</span>
+                  <input
+                    autoComplete="name"
+                    id={fieldId("judge", "display-name")}
+                    onChange={(event) => setJudgeDisplayName(event.target.value)}
+                    placeholder="Judge Access"
+                    value={judgeDisplayName}
+                  />
+                </label>
+                <label className="field">
+                  <span>Judge pass</span>
+                  <input
+                    autoComplete="one-time-code"
+                    id={fieldId("judge", "passcode")}
+                    onChange={(event) => setJudgePasscode(event.target.value)}
+                    placeholder={JUDGE_ENTRY_CODE}
+                    required
+                    value={judgePasscode}
+                  />
+                </label>
+                {error ? (
+                  <p className="auth-error" role="alert">
+                    {error}
+                  </p>
+                ) : null}
+                <div className="auth-actions">
+                  <button className="primary-button auth-primary" disabled={isSubmitting} type="submit">
+                    <ArrowRight size={18} />
+                    <span>Enter as judge</span>
+                  </button>
+                </div>
+                <p className="muted auth-fineprint">
+                  Judges can enter without a password, as long as the shared pass matches the demo code.
+                </p>
+              </form>
+            ) : null}
+          </div>
         </section>
       </section>
     </main>

@@ -150,8 +150,74 @@ a {
   border-radius: 8px;
   box-shadow: var(--shadow);
   display: grid;
-  gap: 14px;
+  gap: 16px;
   padding: 24px;
+}
+
+.auth-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.auth-panel-header h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  line-height: 1.08;
+}
+
+.auth-badge {
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: #0f172a;
+  display: inline-flex;
+  gap: 8px;
+  flex: 0 0 auto;
+  font-weight: 800;
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
+.auth-tabs {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 6px;
+  background: #f8fbfc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.auth-tab {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  gap: 8px;
+  justify-content: center;
+  min-height: 42px;
+  padding: 10px 12px;
+  font-weight: 800;
+}
+
+.auth-tab:hover {
+  color: #0f172a;
+}
+
+.auth-tab.active {
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+  color: #0f172a;
+}
+
+.auth-panels {
+  display: grid;
+  gap: 16px;
 }
 
 .auth-form {
@@ -161,7 +227,6 @@ a {
 
 .auth-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
 
@@ -169,6 +234,15 @@ a {
 .secondary-button {
   width: 100%;
   min-height: 48px;
+}
+
+.auth-form-stack {
+  gap: 14px;
+}
+
+.auth-fineprint {
+  font-size: 0.92rem;
+  line-height: 1.5;
 }
 
 .secondary-button {
@@ -728,19 +802,25 @@ a:focus-visible {
   .scenario-control,
   .metric-grid,
   .briefing-columns,
+  .auth-tabs,
   .auth-actions,
   .session-bar {
     grid-template-columns: 1fr;
   }
 
   .session-bar,
-  .auth-actions {
+  .auth-actions,
+  .auth-panel-header {
     display: grid;
   }
 
   .auth-hero,
   .auth-panel {
     padding: 20px;
+  }
+
+  .auth-badge {
+    justify-self: start;
   }
 
   .scenario-control svg {
